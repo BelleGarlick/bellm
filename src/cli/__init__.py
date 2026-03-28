@@ -30,7 +30,7 @@ colors = [
 
 if __name__ == "__main__":
     for item in list(tokeniser.token_map):
-        if tokeniser[item] > 15_000:
+        if tokeniser[item] > 5_000:
             del tokeniser.token_map[item]
 
     tokens = tokeniser.tokenize(text)

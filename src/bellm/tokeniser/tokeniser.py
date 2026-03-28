@@ -73,6 +73,16 @@ class Tokeniser:
             token_frequencies=token_frequencies
         )
 
+    def tokenize_batch(self, items: List[str]) -> List[Tokenised]:
+        return [
+            self.tokenize(text)
+            for text in items
+        ]
+
+    def detokenise(self, token_ids):
+        inverse = {i: v for v, i in self.token_map.items()}
+        return [inverse[x] for x in token_ids]
+
     def add_token(self, token):
         # Tokens are done for plus 1 so that unknowns return 0
         self.token_map[token] = len(self.token_map) + 1
