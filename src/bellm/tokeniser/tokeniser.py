@@ -23,6 +23,10 @@ class Tokenised:
 
 class Tokeniser:
 
+    UNK = 0
+    PAD = 1
+    NEXT_PAGE = 2
+
     def __init__(self):
         self.token_map = {}
 
@@ -84,8 +88,7 @@ class Tokeniser:
         return [inverse[x] for x in token_ids]
 
     def add_token(self, token):
-        # Tokens are done for plus 1 so that unknowns return 0
-        self.token_map[token] = len(self.token_map) + 1
+        self.token_map[token] = len(self)
 
     def save(self, path):
         with open(path, "w+") as f:
@@ -97,13 +100,13 @@ class Tokeniser:
         return self
 
     def __len__(self):
-        return len(self.token_map)
+        return len(self.token_map) + 3
 
     def __contains__(self, x):
         return x in self.token_map
 
     def __getitem__(self, x):
-        return self.token_map.get(x, 0)
+        return self.token_map.get(x, Tokeniser.UNK)
 
     def __setitem__(self, x, value):
         self.token_map[x] = value
