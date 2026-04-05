@@ -2,4 +2,4 @@
 
 __pycache__
 .DS_Store
-src/reader/dataset
+downloaded_datasets
