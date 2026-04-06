@@ -4,7 +4,9 @@ from bellm.dataset.dataset_sources import DatasetSourceHuggingFace
 ALLENAI_C4_ENGLISH = DatasetSourceHuggingFace(
     path="allenai/c4",
     name="en",
+    split="train",
     max_entries=5_000_000,
+    adapter=lambda data: [x["text"] for x in data]
 )
 
 
