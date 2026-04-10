@@ -4,3 +4,4 @@ __pycache__
 .DS_Store
 downloaded_datasets
 .ipynb_checkpoints
+data/*
