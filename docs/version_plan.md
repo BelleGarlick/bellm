@@ -8,6 +8,8 @@ More coding, image output? tool usage. Multi lingual
 ## Data Ingestion / Processing Pipeline
 - V1
   - Have stuff for RL
+  - Download c4 not working properly
+  - Preprocess shards should be smaller
 - V2
   - Foundation Model Datasets
     - reddit, wiki, leetcode, stackoverflow
@@ -25,7 +27,11 @@ More coding, image output? tool usage. Multi lingual
 ## DataLoader
 - V1
   - Docs
-  - Parallel loading
+  - Loaders
+    - Tokeniser loader
+    - Foundation Loader
+    - Instruction Loader
+  - Parallel loading (should switch to multi-processing)
   - Auto-tokenisation
   - Unit testing
 - V2
@@ -37,6 +43,7 @@ More coding, image output? tool usage. Multi lingual
     - Training
     - Pruning Samples
     - Pruning Sizes
+  - redo with resoning, assistant, user tokens
   - Working with the datasets/dataloaders
 - V2 Onwards
   - Retrain the tokeniser per run
@@ -48,7 +55,6 @@ More coding, image output? tool usage. Multi lingual
   - Model definition defined better
   - Interact with model as it's training via checkpoints
   - Save to some assets store with tags and expirary
-  - Training cycle and diffusion method
   - Flex attention? Longformer? - 5k context size
   - Masking
   - 12 transformer layers
