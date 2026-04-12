@@ -8,7 +8,6 @@ More coding, image output? tool usage. Multi lingual
 ## Data Ingestion / Processing Pipeline
 - V1
   - Have stuff for RL
-  - Download c4 not working properly
   - Preprocess shards should be smaller
 - V2
   - Foundation Model Datasets
@@ -51,7 +50,6 @@ More coding, image output? tool usage. Multi lingual
 ## Training
 - V1 
   - Tensorboard metrics
-  - Utilise dataloader
   - Model definition defined better
   - Interact with model as it's training via checkpoints
   - Save to some assets store with tags and expirary

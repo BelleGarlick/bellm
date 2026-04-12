@@ -41,17 +41,25 @@ def download_c4_english_train(
         streaming=True,
     )
 
+    items = dataset.take(max_length)['text']
+
+    shard_id = 0
+    current_shard = []
+
     # Iterate through all items, downloading into the shards
-    for shard_id, batch_start in tqdm(enumerate(range(0, max_length, MAX_ITEMS_PER_SHARD))):
-        items = dataset.skip(batch_start).take(MAX_ITEMS_PER_SHARD)
-        items = [x['text'] for x in items]
+    for item in tqdm(items):
+        current_shard.append(item)
 
-        shard_name = f"{shard_id}.txt"
-        save_shard(output_path / shard_name, items)
+        if len(current_shard) >= MAX_ITEMS_PER_SHARD:
+            shard_name = f"{shard_id}.txt"
+            save_shard(output_path / shard_name, current_shard)
 
-        # Add this shard to the metadata
-        output_metadata.length += len(items)
-        output_metadata.shards.append(DatasetShardMetadata(uri=shard_name, length=len(items)))
+            # Add this shard to the metadata
+            output_metadata.length += len(current_shard)
+            output_metadata.shards.append(DatasetShardMetadata(uri=shard_name, length=len(current_shard)))
+
+            shard_id += 1
+            current_shard = []
 
     save_dataset_metadata(metadata_path, output_metadata)
 

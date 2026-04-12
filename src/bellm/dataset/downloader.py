@@ -14,6 +14,9 @@ def download_instruction_model_datasets(root: Path):
 
 
 if __name__ == "__main__":
+    download_foundation_model_datasets(Path("/Users/belle/Developer/Belllm/belllm/data/downloaded"))
+    sys.exit(0)
+
     if len(sys.argv) <= 1:
         print("No destination path argument provided")
         sys.exit(1)

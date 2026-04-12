@@ -9,7 +9,7 @@ from typing import List
 from bellm.dataset.utils.dataset_metadata import DatasetMetadata, DatasetShardMetadata
 from bellm.dataset.utils.utils import load_shard, save_shard, save_dataset_metadata
 
-ITEMS_PER_SHARD = 100_000
+ITEMS_PER_SHARD = 20_000
 
 
 @dataclass
