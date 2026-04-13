@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from bellm.dataloader.foundation_model_dataloader import FoundationDataLoader
-from bellm.logging.tensorboard import TensorBoardInterface
+from bellm.logging.tensorboard import MLflowInterface
 from bellm.model.bellm_v1 import TextDiffusionTransformer
 from bellm.utils import get_device
 
@@ -38,10 +38,9 @@ model = TextDiffusionTransformer(
 model.to(DEVICE).to(torch.bfloat16)
 print("Model Size:", sum(p.numel() for p in model.parameters()))
 
-tensorboard = TensorBoardInterface('logs/bellm-v1')
+logger = MLflowInterface(experiment_name="bellm-v1", run_name="test1")
 
 optimiser = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.002)
-
 lr_scheduler = torch.optim.lr_scheduler.StepLR(optimiser, step_size=1, gamma=0.9)
 
 training_dataset = FoundationDataLoader(
@@ -61,7 +60,7 @@ validation_dataset = FoundationDataLoader(
 )
 
 if __name__ == "__main__":
-    for epoch in range(EPOCHS):
+    for epoch in range(1, EPOCHS + 1):
         train_losses = []
         val_losses = []
 
@@ -106,7 +105,7 @@ if __name__ == "__main__":
 
             train_losses.append(loss.item())
             if bidx % LOG_EVERY_BATCH_ITER == 0:
-                tensorboard.log_training_epoch_data(epoch, bidx, training_dataset.batch_count, train_losses[-1])
+                logger.log_training_epoch_data(epoch, bidx, training_dataset.batch_count, np.mean(train_losses))
 
         model.eval()
         for bidx, (batch_x, batch_y) in enumerate(validation_dataset):
@@ -130,9 +129,9 @@ if __name__ == "__main__":
 
             val_losses.append(loss.item())
             if bidx % LOG_EVERY_BATCH_ITER == 0:
-                tensorboard.log_validation_epoch_data(epoch, bidx, validation_dataset.batch_count, val_losses[-1])
+                logger.log_validation_epoch_data(epoch, bidx, validation_dataset.batch_count, np.mean(val_losses))
 
-        tensorboard.log_epoch_data(
+        logger.log_epoch_data(
             np.mean(train_losses),
             np.mean(val_losses),
             lr_scheduler.get_lr()[0],
@@ -180,16 +179,22 @@ if __name__ == "__main__":
             return "".join(tokeniser.detokenise(tokens[0]))
 
         # Log example of text
-        for test_input in [
+        prompts = [
             "Hello, how are you?",
             "Why are you gey?",
             "How do i make a casserole?",
             "Please explain rummikub to me?",
             "Whats the best opening move in chess?",
-        ]:
-            model_input = "[USER]: " + test_input + "\n[ASSISTANT]: "
-            tensorboard.log_test_text(
-                test_input,
-                model_input + generate_flow(model_input, model),
-                epoch=epoch
-            )
+        ]
+        prompts = [(text_input, "[USER]: " + text_input + "\n[ASSISTANT]: ") for text_input in prompts]
+
+        logger.log_test_text(
+            [
+                (
+                    title,
+                    message + generate_flow(message, model),
+                )
+                for title, message in prompts
+            ],
+            epoch=epoch
+        )

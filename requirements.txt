@@ -1,2 +1,9 @@
 torch
-tensorboard
+fastapi
+
+# for ml flow
+mlflow
+flask
+flask_cors
+sqlalchemy
+alembic

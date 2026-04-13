@@ -15,7 +15,7 @@ More coding, image output? tool usage. Multi lingual
     - coding ones and coding instruction ones, repositories etc
   - Unit Testing
   - Tool Usage
-  - RL based format
+  - RL-based format
   - Multi-Lingual
 - V3
   - Image output
@@ -44,12 +44,9 @@ More coding, image output? tool usage. Multi lingual
 - V2 Onwards
   - Retrain the tokeniser per run
 
-## Training
-- V1 
-  - Flex attention? Longformer? - 5k context size
-  - Masking
-  - 12 transformer layers
+## Pre Training
 - V2
+  - Arg driven cli 
   - Sage maker compatible
   - 25k context size
   - 24 transformer layers
@@ -90,6 +87,7 @@ More coding, image output? tool usage. Multi lingual
     - every n episodes recompute the value function
   - with text also output the code
   - need q+a style stuff
+  - update all docs and readme when done
 - v2
   - coding
     - langs: pthon, javascript/typescript, java, c++
@@ -108,3 +106,4 @@ More coding, image output? tool usage. Multi lingual
   - distirbuted
   
 Future work should also then distill / train smaller models
+

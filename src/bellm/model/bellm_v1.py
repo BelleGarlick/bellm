@@ -6,7 +6,7 @@ from transformers import LongformerConfig, LongformerModel
 
 
 class TextDiffusionTransformer(nn.Module):
-    def __init__(self, vocab_size=5000, context_len=5000, diffuse_len=200, embedding_dim=512, transformer_layers=12, n_heads=32):
+    def __init__(self, vocab_size=5000, context_len=5000, diffuse_len=200, embedding_dim=512, transformer_layers=12, n_heads=32, sliding_window_size=300):
         super().__init__()
 
         self.vocab_size = vocab_size
@@ -45,7 +45,7 @@ class TextDiffusionTransformer(nn.Module):
             num_attention_heads=n_heads,
             intermediate_size=embedding_dim * 4,
             num_hidden_layers=transformer_layers,
-            attention_window=[500] * transformer_layers,  # Standard window size; must be even
+            attention_window=[sliding_window_size] * transformer_layers,  # Standard window size; must be even
             max_position_embeddings=context_len + diffuse_len + 2,  # Set this to your max expected sequence length
             type_vocab_size=1,  # Standard for single-sequence tasks
             attention_probs_dropout_prob=0.1,
