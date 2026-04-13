@@ -32,7 +32,8 @@ model = TextDiffusionTransformer(
     diffuse_len=OUTPUT_CONTEXT_SIZE,
     embedding_dim=100,
     transformer_layers=12,
-    n_heads=25
+    n_heads=25,
+    sliding_window_size=500
 )
 
 model.to(DEVICE).to(torch.bfloat16)
