@@ -70,7 +70,7 @@ def download_c4(path: Path):
     download_c4_english_train(
         path,
         "train",
-        5_000_000
+        10_000_000
     )
     download_c4_english_train(
         path,

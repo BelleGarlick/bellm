@@ -5,6 +5,8 @@ from typing import List, Dict
 
 # TODO Add testing and documentation
 
+PREDEFINED_TOKENS = 6
+
 @dataclass
 class Tokenised:
 
@@ -26,6 +28,9 @@ class Tokeniser:
     UNK = 0
     PAD = 1
     NEXT_PAGE = 2
+    USER = 3
+    ASSISTANT = 4
+    REASONING = 5
 
     def __init__(self):
         self.token_map = {}
@@ -85,6 +90,13 @@ class Tokeniser:
 
     def detokenise(self, token_ids):
         inverse = {i: v for v, i in self.token_map.items()}
+        inverse[0] = "[UNK]"
+        inverse[1] = ""
+        inverse[2] = "[NEXT_PAGE]"
+        inverse[3] = "[USER]"
+        inverse[4] = "[ASSISTANT]"
+        inverse[5] = "[REASONING]"
+
         return [inverse[x] for x in token_ids]
 
     def add_token(self, token):
@@ -100,7 +112,7 @@ class Tokeniser:
         return self
 
     def __len__(self):
-        return len(self.token_map) + 3
+        return len(self.token_map) + PREDEFINED_TOKENS
 
     def __contains__(self, x):
         return x in self.token_map

@@ -8,7 +8,7 @@ More coding, image output? tool usage. Multi lingual
 ## Data Ingestion / Processing Pipeline
 - V1
   - Have stuff for RL
-  - Preprocess shards should be smaller
+  - the other datasets i want
 - V2
   - Foundation Model Datasets
     - reddit, wiki, leetcode, stackoverflow
@@ -31,7 +31,6 @@ More coding, image output? tool usage. Multi lingual
     - Foundation Loader
     - Instruction Loader
   - Parallel loading (should switch to multi-processing)
-  - Auto-tokenisation
   - Unit testing
 - V2
   - Utilise S3
@@ -42,17 +41,11 @@ More coding, image output? tool usage. Multi lingual
     - Training
     - Pruning Samples
     - Pruning Sizes
-  - redo with resoning, assistant, user tokens
-  - Working with the datasets/dataloaders
 - V2 Onwards
   - Retrain the tokeniser per run
 
 ## Training
 - V1 
-  - Tensorboard metrics
-  - Model definition defined better
-  - Interact with model as it's training via checkpoints
-  - Save to some assets store with tags and expirary
   - Flex attention? Longformer? - 5k context size
   - Masking
   - 12 transformer layers
@@ -89,7 +82,7 @@ More coding, image output? tool usage. Multi lingual
   - Knowing if it knows something or not
   - Basic facts questions, need some kinda facts database. sometimes environment automatically outputs curent response soit knows whats corect
   - Basic rl environment
-  - basicl rl reward mechanism
+  - basic rl reward mechanism
   - basic python easy leet code questions
   - normally run using model samlping
     - occasionally output optimal items if available

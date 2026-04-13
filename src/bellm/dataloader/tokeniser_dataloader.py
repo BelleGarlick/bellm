@@ -3,22 +3,15 @@ import random
 from pathlib import Path
 from threading import Thread
 
-import numpy as np
-
 from bellm.dataset.utils.dataset_metadata import DatasetMetadata
 from bellm.dataset.utils.utils import load_shard
-from bellm.tokeniser import Tokeniser
 
 
 class ShardLoader(Thread):
 
-    def __init__(self, path: Path, tokeniser: Tokeniser, input_context_length, output_context_length):
+    def __init__(self, path: Path):
         super().__init__()
         self.path = path
-        self.tokeniser = tokeniser
-
-        self.input_context_length = input_context_length
-        self.output_context_length = output_context_length
 
         self.items = []
         self.idxs = []
@@ -29,56 +22,26 @@ class ShardLoader(Thread):
     def __getitem__(self, slice):
         idxs = self.idxs[slice]
 
-        xs = []
-        ys = []
-
-        for item_idx, split_idx in idxs:
-            line = self.items[item_idx]
-            x, y = line[:split_idx], line[split_idx:]
-
-            y_is_truncated = len(y) >= self.input_context_length
-
-            x = x[-self.input_context_length:]
-            y = y[:self.output_context_length]
-
-            if y_is_truncated:
-                y[-1] = Tokeniser.NEXT_PAGE
-
-            x += [self.tokeniser.PAD] * (self.input_context_length - len(x))
-            y += [self.tokeniser.PAD] * (self.output_context_length - len(y))
-
-            xs.append(x)
-            ys.append(y)
-
-        return np.array(xs), np.array(ys)
+        return [self.items[i] for i in idxs]
 
     def run(self):
-        lines = load_shard(self.path)
-        tokenised_items = self.tokeniser.tokenize_batch(lines)
-        self.items = [x.token_ids for x in tokenised_items]
+        self.items = load_shard(self.path)
 
         for idx, item in enumerate(self.items):
-            self.idxs.append((idx, random.randint(0, len(item) - 1)))
+            self.idxs.append(idx)
 
         random.shuffle(self.idxs)
 
 
-class FoundationDataLoader:
+class TokeniserDataLoader:
 
     def __init__(
             self,
             path: Path,
-            batch_size: int,
-            tokeniser: Tokeniser,
-            input_context_length,
-            output_context_length
+            batch_size: int
     ):
         self.path = path
         self.batch_size = batch_size
-        self.tokeniser = tokeniser
-
-        self.input_context_length = input_context_length
-        self.output_context_length = output_context_length
 
         with open(path / "metadata.json") as f:
             self.metadata = DatasetMetadata(**json.load(f))
@@ -88,10 +51,6 @@ class FoundationDataLoader:
 
         self.current_shard = None
         self.next_shard = None
-
-    @property
-    def batch_count(self):
-        return len(self) / self.batch_size
 
     def __iter__(self):
         self.current_shard_idx = -1
@@ -112,12 +71,9 @@ class FoundationDataLoader:
 
     def start_loading_next_shard(self):
         self.next_shard = None
-        if self.current_shard_idx + 1 < len(self.metadata.shards):
+        if self.current_shard_idx < len(self.metadata.shards):
             self.next_shard = ShardLoader(
-                self.path / self.metadata.shards[self.current_shard_idx + 1].uri,
-                self.tokeniser,
-                self.input_context_length,
-                self.output_context_length
+                self.path / self.metadata.shards[self.current_shard_idx + 1].uri
             )
             self.next_shard.start()
 
@@ -139,5 +95,3 @@ class FoundationDataLoader:
         self.current_idx_in_shard = end
 
         return batch
-
-

@@ -136,7 +136,6 @@ if __name__ == "__main__":
         print("Aborting.")
         sys.exit(0)
 
-
     output_path.mkdir(parents=True, exist_ok=True)
 
     process_dataset(source_path, output_path)

@@ -1,6 +1,7 @@
 from collections import defaultdict
+from pathlib import Path
 
-from reader import get_dataset
+from bellm.dataloader.tokeniser_dataloader import TokeniserDataLoader
 from bellm.tokeniser import Tokeniser
 
 
@@ -22,30 +23,31 @@ def count_frequencies(input):
     return tokeniser.tokenize(text_item).token_frequencies
 
 
-TOTAL_SAMPLES = 5_000_000
+BATCH_SIZE = 10_000
 
-BATCH_SIZE = 1000
-
-# Limit to 15k pruned token
-MAX_TOKENS = 15_000
+# Limit to 5k pruned token
+MAX_TOKENS = 5_000
 
 
 if __name__ == "__main__":
-    dataset = get_dataset()
+    dataset = TokeniserDataLoader(Path("/Users/belle/Developer/Belllm/belllm/data/preprocessed/foundation/train"), batch_size=BATCH_SIZE)
+
     tokeniser = Tokeniser().load(f"tokeniser.json")
 
     from multiprocessing import Pool
 
-
     bpe_rankings = defaultdict(int)
 
     with Pool(10) as p:
-        for batch in range(0, TOTAL_SAMPLES, BATCH_SIZE):
-            print(f"\rTokenising {round(batch / TOTAL_SAMPLES * 100, 2)}% complete.", end="")
-            items = dataset.skip(batch).take(BATCH_SIZE)["text"]
+        count = 0
+        for batch_idx, batch in enumerate(dataset):
+            if count > 500_000:
+                break
+            print(f"\rTokenising {round(count / len(dataset) * 100, 2)}% complete {count}.", end="")
+            count += len(batch)
 
             # Call to multi-parallelise the map
-            rankings = p.map(count_frequencies, [(item, tokeniser) for item in items])
+            rankings = p.map(count_frequencies, [(item, tokeniser) for item in batch])
 
             # Combing rankings from this batch with the full batch
             for ranking in rankings:

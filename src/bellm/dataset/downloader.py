@@ -10,13 +10,21 @@ def download_foundation_model_datasets(root: Path):
 
 
 def download_instruction_model_datasets(root: Path):
+    # psyche/glaiveai-reasoning-v1-20m
+    # psyche/MultiSynt-MT-Reasoning
+    # DataMuncher-Labs/UltraMath-Reasoning-Small
+    # MaLA-LM/mala-code-reasoning
+    # https://huggingface.co/datasets/ianncity/KIMI-K2.5-1000000x
+    # https://huggingface.co/datasets/nohurry/Opus-4.6-Reasoning-3000x-filtered
+    # https://huggingface.co/datasets/Modotte/CodeX-2M-Thinking
+    # zake7749/Qwen3-Coder-Next-Open-Code-SFT
+    # DCAgent/c1_gpt53_codex
+    # ronantakizawa/github-codereview
+    # Zigeng/DMax-LLaDA-2.0-Mini-Code-Trajectories
     download_oasst(root / "instruction")
 
 
 if __name__ == "__main__":
-    download_foundation_model_datasets(Path("/Users/belle/Developer/Belllm/belllm/data/downloaded"))
-    sys.exit(0)
-
     if len(sys.argv) <= 1:
         print("No destination path argument provided")
         sys.exit(1)

@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 
 from bellm.dataloader.foundation_model_dataloader import FoundationDataLoader
+from bellm.logging.tensorboard import TensorBoardInterface
 from bellm.model.bellm_v1 import TextDiffusionTransformer
+from bellm.utils import get_device
 
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 
@@ -12,56 +14,35 @@ import numpy as np
 
 from bellm.tokeniser import Tokeniser
 
-def get_device():
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if torch.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
 DEVICE = get_device()
-EPOCHS = 50
+EPOCHS = 100
 BATCH_SIZE = 25
 MAX_VOCAB = 5000
-INPUT_CONTEXT_SIZE = 600
+INPUT_CONTEXT_SIZE = 5000
 OUTPUT_CONTEXT_SIZE = 100
-
-DATASET_SAMPLES = 2_500_000
-
-
-def tensor(x):
-    return torch.tensor(x, dtype=torch.long, device=DEVICE)
+LOG_EVERY_BATCH_ITER = 10
 
 
 tokeniser = Tokeniser().load(f"tokeniser/tokeniser.json")
-for x in list(tokeniser.token_map):
-    if tokeniser.token_map[x] >= MAX_VOCAB:
-        del tokeniser.token_map[x]
 
 
 model = TextDiffusionTransformer(
     vocab_size=MAX_VOCAB,
     context_len=INPUT_CONTEXT_SIZE,
     diffuse_len=OUTPUT_CONTEXT_SIZE,
-    embedding_dim=512,
-    transformer_layers=3
+    embedding_dim=100,
+    transformer_layers=12,
+    n_heads=25
 )
 
 model.to(DEVICE).to(torch.bfloat16)
 print("Model Size:", sum(p.numel() for p in model.parameters()))
 
+tensorboard = TensorBoardInterface('logs/bellm-v1')
 
-optimiser = torch.optim.Adam(
-    model.parameters(),
-    lr=0.0001,
-    weight_decay=0.002
-)
+optimiser = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.002)
 
-my_lr_scheduler = torch.optim.lr_scheduler.StepLR(
-    optimiser,
-    step_size=1,
-    gamma=0.9
-)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimiser, step_size=1, gamma=0.9)
 
 training_dataset = FoundationDataLoader(
     Path("/Users/belle/Developer/Belllm/belllm/data/preprocessed/foundation/train"),
@@ -124,13 +105,12 @@ if __name__ == "__main__":
             optimiser.step()
 
             train_losses.append(loss.item())
-            # if bidx % 1 == 0:
-            print(f"\rEpoch: {epoch} | Batch: {bidx} | Loss: {np.mean(train_losses):.4f} lr={my_lr_scheduler.get_lr()}", end="")
-
+            if bidx % LOG_EVERY_BATCH_ITER == 0:
+                tensorboard.log_training_epoch_data(epoch, bidx, training_dataset.batch_count, train_losses[-1])
 
         model.eval()
         for bidx, (batch_x, batch_y) in enumerate(validation_dataset):
-            batch_x = torch.tensor(batch_x, dtype=torch.long, device=DEVICE),
+            batch_x = torch.tensor(batch_x, dtype=torch.long, device=DEVICE)
             batch_y = torch.tensor(batch_y, dtype=torch.long, device=DEVICE)
 
             x0 = F.one_hot(batch_y, num_classes=MAX_VOCAB).to(DEVICE).to(torch.bfloat16)
@@ -149,47 +129,67 @@ if __name__ == "__main__":
             )
 
             val_losses.append(loss.item())
-            if bidx % 100 == 0:
-                print(f"\rEpoch: {epoch} (Val) | Batch: {bidx} | Loss: {np.mean(val_losses):.4f} lr={my_lr_scheduler.get_lr()}", end="")
+            if bidx % LOG_EVERY_BATCH_ITER == 0:
+                tensorboard.log_validation_epoch_data(epoch, bidx, validation_dataset.batch_count, val_losses[-1])
+
+        tensorboard.log_epoch_data(
+            np.mean(train_losses),
+            np.mean(val_losses),
+            lr_scheduler.get_lr()[0],
+            epoch=epoch
+        )
 
         torch.save(model.state_dict(), "model.pt")
         torch.save(optimiser.state_dict(), "optim.pt")
-        my_lr_scheduler.step()
+        lr_scheduler.step()
 
-        print(f"\r--- Epoch {epoch} Complete. Avg Loss: {np.mean(train_losses):.4f}  Val Avg Loss: {np.mean(val_losses):.4f} lr={my_lr_scheduler.get_lr()} ---")
+        # todo add test examples for text output
+
+        print(f"\r--- Epoch {epoch} Complete. Avg Loss: {np.mean(train_losses):.4f}  Val Avg Loss: {np.mean(val_losses):.4f} ---")
 
     # TESTING
 
-    model.eval()
+        model.eval()
 
-    text = "is"
-    tokens = tokeniser.tokenize_batch([text])[0].token_ids
-    tokens = [Tokeniser.PAD] * (INPUT_CONTEXT_SIZE - len(tokens)) + tokens
-    model_input = torch.tensor(np.array([tokens]), dtype=torch.long, device=DEVICE)
+        def generate_flow(text, model, steps=20):
+            tokens = tokeniser.tokenize_batch([text])[0].token_ids
+            tokens = tokens + [Tokeniser.PAD] * (INPUT_CONTEXT_SIZE - len(tokens))
+            context_ids = torch.tensor(np.array([tokens]), dtype=torch.long, device=DEVICE)
 
+            B = context_ids.shape[0]
+            # Start at t=1 (Pure Noise)
+            xt = torch.randn(B, OUTPUT_CONTEXT_SIZE, MAX_VOCAB, dtype=torch.bfloat16).to(context_ids.device)
 
-    def generate_flow(model, context_ids, steps=20):
-        B = context_ids.shape[0]
-        # Start at t=1 (Pure Noise)
-        xt = torch.randn(B, OUTPUT_CONTEXT_SIZE, MAX_VOCAB, dtype=torch.bfloat16).to(context_ids.device)
+            dt = 1.0 / steps
 
-        dt = 1.0 / steps
+            for i in range(steps):
+                # Current time (1.0 down to 0.0)
+                t_val = 1.0 - (i * dt)
+                t = torch.full((B, 1), t_val, dtype=torch.bfloat16).to(context_ids.device)
 
-        for i in range(steps):
-            # Current time (1.0 down to 0.0)
-            t_val = 1.0 - (i * dt)
-            t = torch.full((B, 1), t_val, dtype=torch.bfloat16).to(context_ids.device)
+                # Predict velocity
+                v = model(context_ids, xt, t)
 
-            # Predict velocity
-            v = model(context_ids, xt, t)
+                # Euler Step: Update xt by moving in the direction of -velocity
+                # (Minus because we are going from noise -> data)
+                xt = xt - v * dt
 
-            # Euler Step: Update xt by moving in the direction of -velocity
-            # (Minus because we are going from noise -> data)
-            xt = xt - v * dt
+            softmax = F.softmax(xt, dim=2)
+            tokens = torch.argmax(softmax, dim=2).detach().cpu().numpy()
 
-        return xt  # These are your denoised pre-softmax logits
+            return "".join(tokeniser.detokenise(tokens[0]))
 
-    softmax = F.softmax(generate_flow(model, model_input), dim=2)
-    tokens = torch.argmax(softmax, dim=2).detach().cpu().numpy()
-
-    print("".join(tokeniser.detokenise(tokens[0])))
+        # Log example of text
+        for test_input in [
+            "Hello, how are you?",
+            "Why are you gey?",
+            "How do i make a casserole?",
+            "Please explain rummikub to me?",
+            "Whats the best opening move in chess?",
+        ]:
+            model_input = "[USER]: " + test_input + "\n[ASSISTANT]: "
+            tensorboard.log_test_text(
+                test_input,
+                model_input + generate_flow(model_input, model),
+                epoch=epoch
+            )

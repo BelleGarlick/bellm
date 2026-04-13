@@ -2,21 +2,22 @@ import math
 
 import torch
 import torch.nn as nn
+from transformers import LongformerConfig, LongformerModel
 
 
 class TextDiffusionTransformer(nn.Module):
-    def __init__(self, vocab_size=5000, context_len=600, diffuse_len=200, embedding_dim=512, transformer_layers=12):
+    def __init__(self, vocab_size=5000, context_len=5000, diffuse_len=200, embedding_dim=512, transformer_layers=12, n_heads=32):
         super().__init__()
 
         self.vocab_size = vocab_size
         self.diffuse_len = diffuse_len
         self.model_dim = embedding_dim
 
-        # 1. Context Embedding (for the 1k fixed tokens)
+        # Context Embedding for the input text embeddings
         self.context_embedding = nn.Embedding(vocab_size, embedding_dim)
 
-        # 2. Logit Projection (for the 200 tokens being diffused)
-        # This takes the B x 200 x 10000 logits and brings them to model_dim
+        # 2. Logit Projection (for the 100 tokens being diffused)
+        # This takes the B x 100 x 5000 logits and brings them to model_dim
         self.diffuse_projection = nn.Linear(vocab_size, embedding_dim)
 
         self.pos_emb = nn.Parameter(torch.zeros(1, context_len + diffuse_len, embedding_dim))
@@ -30,14 +31,27 @@ class TextDiffusionTransformer(nn.Module):
 
         # 4. Transformer Layers
         # We use a standard Encoder; you can increase num_layers for better results
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embedding_dim,
-            nhead=16,
-            dim_feedforward=embedding_dim * 4,
-            batch_first=True,
-            norm_first=True
+        # encoder_layer = nn.TransformerEncoderLayer(
+        #     d_model=embedding_dim,
+        #     nhead=n_heads,
+        #     dim_feedforward=embedding_dim * 4,
+        #     batch_first=True,
+        #     norm_first=True
+        # )
+        # self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=transformer_layers)
+
+        config = LongformerConfig(
+            hidden_size=embedding_dim,
+            num_attention_heads=n_heads,
+            intermediate_size=embedding_dim * 4,
+            num_hidden_layers=transformer_layers,
+            attention_window=[500] * transformer_layers,  # Standard window size; must be even
+            max_position_embeddings=context_len + diffuse_len + 2,  # Set this to your max expected sequence length
+            type_vocab_size=1,  # Standard for single-sequence tasks
+            attention_probs_dropout_prob=0.1,
+            hidden_dropout_prob=0.1
         )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=transformer_layers)
+        self.transformer = LongformerModel(config)
 
         # 5. Output Head (Back to 10k logits)
         self.to_velocity = nn.Linear(embedding_dim, vocab_size)
@@ -78,7 +92,26 @@ class TextDiffusionTransformer(nn.Module):
         x = x + t_emb
 
         # Process through Transformer
-        x = self.transformer(x)
+        # x = self.transformer(x)
+
+        # Create the Sliding Window Mask
+        # Shape (B, 1200)
+        device = x.device
+        attention_mask = torch.ones(x.shape[:2], device=device, dtype=torch.long)
+
+        # Optional: Make context tokens (first 1000) "Global"
+        # so they can see everything, while noisy tokens (last 200)
+        # use the sliding window to see the context.
+        # attention_mask[:, :1000] = 2
+
+        # Pass to Longformer
+        outputs = self.transformer(
+            inputs_embeds=x,
+            attention_mask=attention_mask,
+            return_dict=True
+        )
+
+        x = outputs.last_hidden_state
 
         # Slice out only the 200 "diffuse" tokens for the output
         diffuse_out = x[:, -self.diffuse_len:, :]
