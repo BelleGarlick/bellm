@@ -7,3 +7,4 @@ flask
 flask_cors
 sqlalchemy
 alembic
+pydantic

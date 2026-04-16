@@ -3,6 +3,12 @@
 
 > BeLLM is a flow-matching-based LLM model
 
+```shell
+python3 src/bellm/cli train foundation-model \
+  --dataset.path="hi" \
+  --model.tokeniser="src/bellm/tokeniser/tokeniser.json" \
+  --save-config="config.json"
+```
 
 # Tokeniser
 Run the `bellm.tokeniser.tokenisation_trainer.py` to train the tokeniser.  
